@@ -1,0 +1,17 @@
+# Data and model outputs (large, downloaded or generated)
+data/
+runs/
+*.pt
+*.tif
+*.tiff
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+
+# Gradio / OS
+.gradio/
+.DS_Store
+Thumbs.db
