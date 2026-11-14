@@ -67,7 +67,7 @@ def main() -> None:
     rows = []
     for split in EVAL_SPLITS:
         for source in ["skdb", "pc", "all"]:
-            m = (df["split"] == split).to_numpy()
+            m = (df["split"] == split).to_numpy().copy()
             if source != "all":
                 m &= (df["source"] == source).to_numpy()
             if not m.any():
