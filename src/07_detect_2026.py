@@ -9,6 +9,8 @@ Usage:  python src/07_detect_2026.py --name yolov8n_256_hardneg --conf 0.25 --di
 
 Tiles are 128 x 128 pixels on the SentinelKilnDB grid (EPSG:4326, Earth Engine scale=10) with a
 30-pixel overlap, cut with the same per-patch stretch as the training data (see s2patch.py).
+Detections centred within EDGE_PX of a tile edge are dropped: tiles overlap by 30 pixels, so every
+spot is at least 15 pixels from the edge in some tile, where the kiln is seen whole.
 A kiln near a tile edge can be found in two tiles, so detections closer than MERGE_M are merged,
 keeping the most confident one.
 """
@@ -32,6 +34,7 @@ from config import CLASS_NAMES, PROC, RAW, RESULTS, ROOT
 OUT = PROC / "s2_2026"
 STRIDE = s2patch.PATCH - 30
 MERGE_M = 150
+EDGE_PX = 12
 
 
 def tile_centres(geom) -> list[tuple[float, float]]:
@@ -95,6 +98,9 @@ def detect(model, tiles: pd.DataFrame, conf: float, imgsz: int) -> pd.DataFrame:
             corners = r.obb.xyxyxyxyn.cpu().numpy()  # (n, 4, 2), normalised to the tile
             for k in range(len(corners)):
                 cx, cy = corners[k, :, 0].mean(), corners[k, :, 1].mean()
+                margin = EDGE_PX / s2patch.PATCH
+                if min(cx, cy, 1 - cx, 1 - cy) < margin:  # cut off by the tile edge; seen whole in a neighbour
+                    continue
                 rows.append({
                     "lon": t.lon + (cx - 0.5) * span,
                     "lat": t.lat - (cy - 0.5) * span,

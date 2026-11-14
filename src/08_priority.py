@@ -16,6 +16,9 @@ Status from matching 2026 detections to 2024 NUST points within MATCH_M:
 - confirmed     found in both
 - new_2026      detected now, not in the 2024 list: possibly new or unregistered
 - missing_2026  in the 2024 list, not detected now: closed, or a model miss (see missing_2026.csv)
+- urban_check   a new detection with more people within 1 km than 99% of the 2024 registered kilns
+                in the same districts. Kilns need open land, so these are most likely city false
+                alarms; they stay in the list for a visual check but rank after everything else.
 
 Limitation: OpenStreetMap maps only a fraction of schools in KP, mostly in cities (for example 9 in
 Swabi and 17 in Mardan), so schools_1km counts OSM-mapped schools and undercounts near rural kilns.
@@ -33,6 +36,7 @@ from scipy.spatial import cKDTree
 from config import RAW, RESULTS
 
 MATCH_M = 150
+URBAN_PCTL = 99
 RADIUS_M = 1000
 UTM = "EPSG:32642"  # Peshawar valley lies in UTM zone 42N
 W_TYPE = {"FCBK": 2, "CFCBK": 2, "Zigzag": 1}
@@ -93,7 +97,12 @@ def main() -> None:
     kilns["population_1km"] = population_within(kilns["lon"], kilns["lat"]).round()
 
     kilns["priority"] = kilns["type"].map(W_TYPE) * (1 + kilns["schools_1km"]) + kilns["population_1km"] / 10_000
-    kilns = kilns.sort_values(["priority", "confidence"], ascending=False).reset_index(drop=True)
+    urban_limit = np.percentile(nust["pop1km"].dropna(), URBAN_PCTL)
+    urban = (kilns["status"] == "new_2026") & (kilns["population_1km"] > urban_limit)
+    kilns.loc[urban, "status"] = "urban_check"
+    print(f"urban_check limit: {urban_limit:.0f} people within 1 km ({URBAN_PCTL}th percentile of 2024 kilns)")
+    kilns["_urban"] = urban.astype(int)
+    kilns = kilns.sort_values(["_urban", "priority", "confidence"], ascending=[True, False, False]).reset_index(drop=True)
     kilns.insert(0, "rank", np.arange(1, len(kilns) + 1))
     cols = ["rank", "lat", "lon", "district", "type", "confidence", "schools_1km", "hospitals_1km",
             "population_1km", "priority", "status", "nust_id", "nust_type", "tile", "box_px", "scene"]
