@@ -14,19 +14,13 @@ Notes
 - GADM level 2 for Pakistan is divisions, so we use level 3 for districts.
 """
 
-from pathlib import Path
-
 import geopandas as gpd
 import pandas as pd
 import pyarrow.parquet as pq
 
-ROOT = Path(__file__).resolve().parents[1]
-RAW = ROOT / "data" / "raw"
-OUT = ROOT / "data" / "processed"
-IMG_DIR = OUT / "patches" / "images"
-LBL_DIR = OUT / "patches" / "labels"
+from config import CLASS_NAMES, IMG_DIR, LBL_DIR, RAW
+from config import PROC as OUT
 
-CLASS_NAMES = {0: "CFCBK", 1: "FCBK", 2: "Zigzag"}
 HF_SPLITS = ["train", "val", "test"]
 
 
