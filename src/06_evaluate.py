@@ -82,6 +82,10 @@ def main() -> None:
         sub = df[df["split"] == split]
         s = max_conf_per_patch(model, sub["image_name"].tolist(), args.imgsz)
         pred = (s >= args.conf).astype(int)
+        urban = sub["image_name"].str.startswith("negu_").to_numpy()
+        if urban.any():  # urban negatives only: every alarm here is a false alarm on a town or city
+            patch_rows.append({"model": args.name, "split": split, "source": "urban_negatives", "conf": args.conf,
+                               **patch_scores(sub["y"].to_numpy()[urban], pred[urban])})
         for source in ["skdb", "pc", "all"]:
             m = np.ones(len(sub), bool) if source == "all" else (sub["source"] == source).to_numpy()
             if m.any():
