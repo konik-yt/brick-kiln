@@ -1,0 +1,16 @@
+kind,image_name,split,source,district,score,boxes,file
+false_alarm,negu_34.0036_71.9438.png,test_kp,pc,Nowshera,0.6196313500404358,1,false_alarm_00.png
+false_alarm,negu_34.0395_71.7774.png,test_kp,pc,Nowshera,0.5639842748641968,1,false_alarm_01.png
+false_alarm,negu_28.4521_70.3780.png,test_punjab,pc,RahimyarKhan,0.500817060470581,1,false_alarm_02.png
+false_alarm,neg_28.3265_70.2578.png,test_punjab,pc,RahimyarKhan,0.593317985534668,1,false_alarm_03.png
+false_alarm,neg_28.5347_70.0673.png,test_punjab,pc,RahimyarKhan,0.5004379749298096,2,false_alarm_04.png
+false_alarm,neg_34.3188_71.6213.png,test_kp,pc,Charsadda,0.47499600052833557,1,false_alarm_05.png
+missed_kiln,34.1977_71.7845.png,test_kp,skdb,Charsadda,1.0,0,missed_kiln_06.png
+missed_kiln,34.2012_71.7845.png,test_kp,skdb,Charsadda,1.0,0,missed_kiln_07.png
+missed_kiln,33.8978_71.8223.png,test_kp,skdb,Nowshera,1.0,0,missed_kiln_08.png
+missed_kiln,pc_33.8978_71.6346.png,test_kp,pc,Peshawar,8.0,0,missed_kiln_09.png
+missed_kiln,pc_33.9275_71.6548.png,test_kp,pc,Peshawar,5.0,0,missed_kiln_10.png
+missed_kiln,pc_33.9363_71.6724.png,test_kp,pc,Peshawar,3.0,0,missed_kiln_11.png
+wrong_type,28.7426_70.8351.png,test_punjab,skdb,RahimyarKhan,0.7945030331611633,3,wrong_type_12.png
+wrong_type,30.4574_73.0351.png,test_punjab,skdb,Sahiwal,0.7858511805534363,2,wrong_type_13.png
+wrong_type,30.4541_73.0351.png,test_punjab,skdb,Sahiwal,0.7734258770942688,5,wrong_type_14.png
