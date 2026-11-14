@@ -6,7 +6,7 @@ Reads:  results/kilns_2026.geojson                         (step 7)
         data/raw/osm/hospitals_peshawar_valley.geojson     (OSM hospitals and clinics, step 7a)
         data/raw/worldpop/pak_ppp_2020_constrained.tif     (people per ~100 m pixel)
         data/raw/gadm/gadm41_PAK_3.json
-Writes: results/priority_list.csv    detected kilns, ranked
+Writes: results/priority_list.csv    detected kilns, ranked in tiers (see below)
         results/missing_2026.csv     2024 NUST kilns with no 2026 detection nearby
 
 priority = w_type * (1 + schools_1km) + population_1km / 10,000
@@ -19,6 +19,12 @@ Status from matching 2026 detections to 2024 NUST points within MATCH_M:
 - urban_check   a new detection with more people within 1 km than 99% of the 2024 registered kilns
                 in the same districts. Kilns need open land, so these are most likely city false
                 alarms; they stay in the list for a visual check but rank after everything else.
+
+The list has three tiers, each ranked by the priority score:
+- tier 1  confirmed kilns (model and 2024 list agree): inspect
+- tier 2  new_2026 detections: possible new or unregistered kilns, verify on high-res imagery first.
+          Most false alarms are here, so ranking them with tier 1 would put them at the top.
+- tier 3  urban_check detections: most likely city false alarms, check by eye
 
 Limitation: OpenStreetMap maps only a fraction of schools in KP, mostly in cities (for example 9 in
 Swabi and 17 in Mardan), so schools_1km counts OSM-mapped schools and undercounts near rural kilns.
@@ -37,6 +43,8 @@ from config import RAW, RESULTS
 
 MATCH_M = 150
 URBAN_PCTL = 99
+TIERS = {"confirmed": 1, "new_2026": 2, "urban_check": 3}
+ACTIONS = {1: "inspect", 2: "verify on high-res imagery first", 3: "likely city false alarm, check by eye"}
 RADIUS_M = 1000
 UTM = "EPSG:32642"  # Peshawar valley lies in UTM zone 42N
 W_TYPE = {"FCBK": 2, "CFCBK": 2, "Zigzag": 1}
@@ -101,11 +109,12 @@ def main() -> None:
     urban = (kilns["status"] == "new_2026") & (kilns["population_1km"] > urban_limit)
     kilns.loc[urban, "status"] = "urban_check"
     print(f"urban_check limit: {urban_limit:.0f} people within 1 km ({URBAN_PCTL}th percentile of 2024 kilns)")
-    kilns["_urban"] = urban.astype(int)
-    kilns = kilns.sort_values(["_urban", "priority", "confidence"], ascending=[True, False, False]).reset_index(drop=True)
+    kilns["tier"] = kilns["status"].map(TIERS)
+    kilns["action"] = kilns["tier"].map(ACTIONS)
+    kilns = kilns.sort_values(["tier", "priority", "confidence"], ascending=[True, False, False]).reset_index(drop=True)
     kilns.insert(0, "rank", np.arange(1, len(kilns) + 1))
-    cols = ["rank", "lat", "lon", "district", "type", "confidence", "schools_1km", "hospitals_1km",
-            "population_1km", "priority", "status", "nust_id", "nust_type", "tile", "box_px", "scene"]
+    cols = ["rank", "tier", "lat", "lon", "district", "type", "confidence", "schools_1km", "hospitals_1km",
+            "population_1km", "priority", "status", "action", "nust_id", "nust_type", "tile", "box_px", "scene"]
     kilns["lat"], kilns["lon"] = kilns["lat"].round(5), kilns["lon"].round(5)
     kilns["confidence"], kilns["priority"] = kilns["confidence"].round(3), kilns["priority"].round(3)
     kilns[cols].to_csv(RESULTS / "priority_list.csv", index=False)
@@ -119,7 +128,7 @@ def main() -> None:
     print(f"2026 detections: {len(kilns)}   2024 NUST kilns in area: {len(nust)}")
     print(kilns["status"].value_counts().to_string())
     print(f"missing_2026 (in 2024 list, not detected): {len(missing)}")
-    print("\nTop 10:\n", kilns[cols[:11]].head(10).to_string(index=False))
+    print("\nTop 10:\n", kilns[cols[:12]].head(10).to_string(index=False))
 
 
 if __name__ == "__main__":
