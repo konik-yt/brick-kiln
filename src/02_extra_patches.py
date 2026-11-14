@@ -4,11 +4,14 @@ Why: in SentinelKilnDB the empty patches are mostly south-Punjab desert and KP h
 so "kiln vs no kiln" can be solved by telling desert from farmland. We add:
 - hard negatives  ("neg_<lat>_<lon>.png"): random points in the split's districts, at least
                   2 km from every known kiln, so the whole patch is more than 1 km from a kiln.
+- urban negatives ("negu_<lat>_<lon>.png", with --urban): the same, but only in towns and cities.
+                  Added after the first 2026 run showed false alarms on dense city blocks.
 - re-cut kilns    ("pc_<lat>_<lon>.png"): existing kiln patches cut again from the same source
                   as the negatives, with the original labels. This way both classes exist in both
                   image sources, and the model cannot score by recognising the source.
 
 Usage:  python src/02_extra_patches.py --split test_kp --neg 321 --recut 321
+        python src/02_extra_patches.py --split train --neg 1500 --urban 40
 Reads:  data/processed/patches.csv, data/processed/patches/labels/, data/raw/gadm/gadm41_PAK_3.json
 Writes: data/processed/patches/images/{neg_,pc_}*.png, labels for pc_*, data/processed/extra/<split>.csv
 """
@@ -23,6 +26,8 @@ import geopandas as gpd
 import numpy as np
 import pandas as pd
 from PIL import Image
+import rasterio
+from pyproj import Transformer
 from scipy.spatial import cKDTree
 from shapely.geometry import Point, mapping
 
@@ -46,24 +51,39 @@ def known_kilns(patches: pd.DataFrame) -> np.ndarray:
             x, y = v[0::2].mean(), v[1::2].mean()
             lons.append(row.lon + (x - 0.5) * span)
             lats.append(row.lat - (y - 0.5) * span)
+    # Also the NUST/Oxford 2024 kiln points, so negatives avoid kilns either list knows about.
+    nust = pd.read_csv(RAW / "nust" / "Brick_Kilns_IGP_PK.csv").dropna(subset=["lat", "lon"])
+    lons += nust["lon"].tolist()
+    lats += nust["lat"].tolist()
     pts = gpd.GeoSeries(gpd.points_from_xy(lons, lats), crs="EPSG:4326").to_crs(UTM)
     return np.column_stack([pts.x, pts.y])
 
 
-def sample_negatives(district_geom, n: int, kiln_tree: cKDTree, rng: np.random.Generator) -> list[tuple[float, float]]:
-    """Uniform random points inside the (inward-buffered) district, far from known kilns."""
+def sample_negatives(district_geom, n: int, kiln_tree: cKDTree, rng: np.random.Generator,
+                     min_people: float | None = None) -> list[tuple[float, float]]:
+    """Uniform random points inside the (inward-buffered) district, far from known kilns.
+
+    With min_people set, keep only points whose WorldPop 2020 pixel (~100 m) holds at least that
+    many people, i.e. towns and cities.
+    """
     inner = gpd.GeoSeries([district_geom], crs="EPSG:4326").to_crs(UTM).buffer(-1000).iloc[0]
     if inner.is_empty:
         return []
+    pop = rasterio.open(RAW / "worldpop" / "pak_ppp_2020_constrained.tif") if min_people else None
+    to_ll = Transformer.from_crs(UTM, "EPSG:4326", always_xy=True)
     minx, miny, maxx, maxy = inner.bounds
     out, tries = [], 0
-    while len(out) < n and tries < n * 500:
+    while len(out) < n and tries < n * 2000:
         tries += 1
         x, y = rng.uniform(minx, maxx), rng.uniform(miny, maxy)
         if not inner.contains(Point(x, y)):
             continue
         if kiln_tree.query([x, y])[0] < MIN_KILN_DIST_M:
             continue
+        if pop is not None:
+            people = next(pop.sample([to_ll.transform(x, y)]))[0]
+            if people < min_people:
+                continue
         out.append((x, y))
     if not out:
         return []
@@ -76,9 +96,12 @@ def main() -> None:
     ap.add_argument("--split", required=True)
     ap.add_argument("--neg", type=int, default=0, help="hard negatives to cut")
     ap.add_argument("--recut", type=int, default=0, help="existing kiln patches to re-cut")
+    ap.add_argument("--urban", type=float, default=None,
+                    help="only cut negatives where a WorldPop pixel has at least this many people (towns, cities)")
     ap.add_argument("--workers", type=int, default=16)
     ap.add_argument("--seed", type=int, default=0)
     args = ap.parse_args()
+    kind_neg = "negu" if args.urban else "neg"
     rng = np.random.default_rng(args.seed)
 
     patches = pd.read_csv(PROC / "patches.csv")
@@ -96,8 +119,8 @@ def main() -> None:
         if d.NAME_3 not in weight.index:
             continue
         n_neg = int(round(args.neg * weight[d.NAME_3] / weight.sum() * 1.3))  # 30% spare for cloudy/edge patches
-        for lon, lat in sample_negatives(d.geometry, n_neg, kiln_tree, rng):
-            jobs.append((f"neg_{lat:.4f}_{lon:.4f}.png", lon, lat, d.NAME_1, d.NAME_3, "neg", None))
+        for lon, lat in sample_negatives(d.geometry, n_neg, kiln_tree, rng, min_people=args.urban):
+            jobs.append((f"{kind_neg}_{lat:.4f}_{lon:.4f}.png", lon, lat, d.NAME_1, d.NAME_3, kind_neg, None))
     recut = pos.sample(min(args.recut, len(pos)), random_state=args.seed) if args.recut else pos.iloc[:0]
     for r in recut.itertuples():
         jobs.append((f"pc_{r.image_name}", r.lon, r.lat, r.province, r.district, "recut", r.image_name))
@@ -137,7 +160,7 @@ def main() -> None:
                 print(f"{i}/{len(jobs)} done, {failed} skipped")
 
     out = pd.DataFrame(rows)
-    negs = out[out["hf_split"] == "pc_neg"]
+    negs = out[out["hf_split"] == f"pc_{kind_neg}"]
     if len(negs) > args.neg:  # drop the spare negatives
         drop = negs.sample(len(negs) - args.neg, random_state=args.seed)
         for n in drop["image_name"]:
@@ -150,8 +173,9 @@ def main() -> None:
     for c in ["n_kilns"] + [f"n_{c}" for c in CLASS_NAMES.values()]:
         out[c] = out[c].astype(int)
     EXTRA.mkdir(parents=True, exist_ok=True)
-    out.to_csv(EXTRA / f"{args.split}.csv", index=False)
-    print(f"\n{args.split}: {len(out)} patches written ({(out.hf_split == 'pc_neg').sum()} negatives, "
+    tag = f"{args.split}_urban" if args.urban else args.split
+    out.to_csv(EXTRA / f"{tag}.csv", index=False)
+    print(f"\n{tag}: {len(out)} patches written ({(out.hf_split == f'pc_{kind_neg}').sum()} negatives, "
           f"{(out.hf_split == 'pc_recut').sum()} re-cut kiln patches), {failed} skipped")
 
 
