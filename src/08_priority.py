@@ -2,7 +2,8 @@
 
 Reads:  results/kilns_2026.geojson                         (step 7)
         data/raw/nust/Brick_Kilns_IGP_PK.csv               (NUST/Oxford 2024 kiln points)
-        data/raw/osm/{schools,hospitals}_peshawar_valley.geojson
+        data/raw/osm/schools_kp_osm.geojson                (OSM schools, colleges, universities for all of KP)
+        data/raw/osm/hospitals_peshawar_valley.geojson     (OSM hospitals and clinics, step 7a)
         data/raw/worldpop/pak_ppp_2020_constrained.tif     (people per ~100 m pixel)
         data/raw/gadm/gadm41_PAK_3.json
 Writes: results/priority_list.csv    detected kilns, ranked
@@ -16,8 +17,10 @@ Status from matching 2026 detections to 2024 NUST points within MATCH_M:
 - new_2026      detected now, not in the 2024 list: possibly new or unregistered
 - missing_2026  in the 2024 list, not detected now: closed, or a model miss (see missing_2026.csv)
 
-Limitation: OpenStreetMap maps only a fraction of schools in KP (mostly urban), so schools_1km
-undercounts near rural kilns.
+Limitation: OpenStreetMap maps only a fraction of schools in KP, mostly in cities (for example 9 in
+Swabi and 17 in Mardan), so schools_1km counts OSM-mapped schools and undercounts near rural kilns.
+No official KP school list with coordinates is openly available. population_1km (WorldPop) does
+cover rural areas, so it still carries the exposure signal where schools are missing.
 """
 
 import geopandas as gpd
@@ -83,7 +86,7 @@ def main() -> None:
     kilns["nust_id"] = np.where(matched, nust["id"].to_numpy()[np.minimum(idx, len(nust) - 1)], np.nan)
     kilns["nust_type"] = np.where(matched, nust["type"].to_numpy()[np.minimum(idx, len(nust) - 1)], "")
 
-    schools = gpd.read_file(RAW / "osm" / "schools_peshawar_valley.geojson")
+    schools = gpd.read_file(RAW / "osm" / "schools_kp_osm.geojson")
     hospitals = gpd.read_file(RAW / "osm" / "hospitals_peshawar_valley.geojson")
     kilns["schools_1km"] = count_within(k_xy, utm_xy(schools), RADIUS_M)
     kilns["hospitals_1km"] = count_within(k_xy, utm_xy(hospitals), RADIUS_M)
