@@ -53,6 +53,9 @@ def tile_centres(geom) -> list[tuple[float, float]]:
 def cut_tiles(districts: gpd.GeoDataFrame, start: str, end: str, workers: int) -> pd.DataFrame:
     (OUT / "images").mkdir(parents=True, exist_ok=True)
     cat = s2patch.catalog()
+    # Tiles cut in an earlier run are reused; their scene ids come from the earlier tiles.csv.
+    old = OUT / "tiles.csv"
+    known = dict(pd.read_csv(old)[["image_name", "scene"]].dropna().values) if old.exists() else {}
     jobs = []
     for d in districts.itertuples():
         scenes = s2patch.find_scenes(mapping(d.geometry.envelope), start, end, max_cloud=10, cat=cat)
@@ -63,7 +66,7 @@ def cut_tiles(districts: gpd.GeoDataFrame, start: str, end: str, workers: int) -
         lon, lat, dist, scenes = job
         name = f"{lat:.4f}_{lon:.4f}.png"
         if (OUT / "images" / name).exists():
-            return {"image_name": name, "lat": lat, "lon": lon, "district": dist, "scene": "cached"}
+            return {"image_name": name, "lat": lat, "lon": lon, "district": dist, "scene": known.get(name)}
         rgb, item = s2patch.cut_best(scenes, lon, lat)
         if rgb is None:
             return {"image_name": None, "lat": lat, "lon": lon, "district": dist, "scene": None}
