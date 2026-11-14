@@ -19,7 +19,7 @@ import pandas as pd
 from PIL import Image, ImageDraw
 from ultralytics import YOLO
 
-from config import CLASS_NAMES, IMG_DIR, LBL_DIR, PROC, RESULTS, weights_path
+from config import CLASS_NAMES, FINAL_CONF, FINAL_IMGSZ, FINAL_MODEL, IMG_DIR, LBL_DIR, PROC, RESULTS, weights_path
 
 OUT = RESULTS / "failures"
 SCALE = 3
@@ -53,9 +53,9 @@ def draw(name: str, gt, pred, title: str, path) -> None:
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--name", default="yolov8s_384_urban")
-    ap.add_argument("--imgsz", type=int, default=384)
-    ap.add_argument("--conf", type=float, default=0.2)
+    ap.add_argument("--name", default=FINAL_MODEL)
+    ap.add_argument("--imgsz", type=int, default=FINAL_IMGSZ)
+    ap.add_argument("--conf", type=float, default=FINAL_CONF)
     args = ap.parse_args()
 
     model = YOLO(str(weights_path(args.name)))

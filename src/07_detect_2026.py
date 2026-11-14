@@ -5,7 +5,7 @@ Writes: data/processed/s2_2026/images/<lat>_<lon>.png      (tiles, kept for the 
         data/processed/s2_2026/tiles.csv                   (tile centre, district, scene used)
         results/kilns_2026.geojson                          (one point per kiln after merging)
 
-Usage:  python src/07_detect_2026.py --name yolov8n_256_hardneg --conf 0.25 --districts Peshawar
+Usage:  python src/07_detect_2026.py --districts Peshawar      (model, image size and threshold default to config.FINAL_*)
 
 Tiles are 128 x 128 pixels on the SentinelKilnDB grid (EPSG:4326, Earth Engine scale=10) with a
 30-pixel overlap, cut with the same per-patch stretch as the training data (see s2patch.py).
@@ -29,7 +29,7 @@ from shapely.geometry import box, mapping
 from ultralytics import YOLO
 
 import s2patch
-from config import CLASS_NAMES, PROC, RAW, RESULTS, ROOT, weights_path
+from config import CLASS_NAMES, FINAL_CONF, FINAL_IMGSZ, FINAL_MODEL, PROC, RAW, RESULTS, ROOT, weights_path
 
 OUT = PROC / "s2_2026"
 STRIDE = s2patch.PATCH - 30
@@ -137,9 +137,9 @@ def merge_duplicates(det: pd.DataFrame) -> pd.DataFrame:
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--name", required=True)
-    ap.add_argument("--conf", type=float, required=True, help="box threshold, chosen on val in step 6")
-    ap.add_argument("--imgsz", type=int, default=256)
+    ap.add_argument("--name", default=FINAL_MODEL)
+    ap.add_argument("--conf", type=float, default=FINAL_CONF, help="box threshold, chosen on val in step 6")
+    ap.add_argument("--imgsz", type=int, default=FINAL_IMGSZ)
     ap.add_argument("--districts", nargs="+", default=["Peshawar"])
     ap.add_argument("--start", default="2026-10-01")
     ap.add_argument("--end", default="2026-11-14")

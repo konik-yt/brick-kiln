@@ -12,6 +12,11 @@ MODELS = ROOT / "models"
 
 CLASS_NAMES = {0: "CFCBK", 1: "FCBK", 2: "Zigzag"}
 
+# Final model, chosen on validation. The single place to change it: steps 7 and 9 and the app read these.
+FINAL_MODEL = "yolov8s_384_urban"
+FINAL_IMGSZ = 384
+FINAL_CONF = 0.20  # box threshold, chosen on the val split (06_evaluate.py)
+
 # District split (step 3). Punjab districts are held out whole.
 VAL_DISTRICTS = ["Gujranwala1", "Multan", "Bahawalnagar", "Chakwal"]
 TEST_PUNJAB_DISTRICTS = ["Sheikhupura", "Sahiwal", "RahimyarKhan", "Jhelum"]

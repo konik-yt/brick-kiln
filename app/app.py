@@ -24,9 +24,9 @@ from ultralytics import YOLO
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
-from config import CLASS_NAMES, RESULTS, weights_path  # noqa: E402
+from config import CLASS_NAMES, FINAL_CONF, FINAL_IMGSZ, FINAL_MODEL, RESULTS, weights_path  # noqa: E402
 
-MODEL_NAME, IMGSZ, CONF = "yolov8s_384_urban", 384, 0.20  # threshold chosen on validation
+MODEL_NAME, IMGSZ, CONF = FINAL_MODEL, FINAL_IMGSZ, FINAL_CONF
 APP = Path(__file__).resolve().parent
 COLOURS = {"CFCBK": (255, 60, 60), "FCBK": (255, 60, 60), "Zigzag": (60, 220, 60)}
 
@@ -58,7 +58,7 @@ def detect(image):
             d.text((pts[0][0] + 3, pts[0][1] - 12), f"{name} {float(conf):.2f}", fill=COLOURS[name])
             rows.append({"type": name, "confidence": round(float(conf), 3)})
     table = pd.DataFrame(rows)
-    msg = note + (f"Found {len(rows)} kiln(s)." if rows else "No kilns found at confidence 0.20 or higher.")
+    msg = note + (f"Found {len(rows)} kiln(s)." if rows else f"No kilns found at confidence {CONF:.2f} or higher.")
     return np.asarray(big), table, msg
 
 
