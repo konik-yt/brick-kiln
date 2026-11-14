@@ -29,7 +29,7 @@ from shapely.geometry import box, mapping
 from ultralytics import YOLO
 
 import s2patch
-from config import CLASS_NAMES, PROC, RAW, RESULTS, ROOT
+from config import CLASS_NAMES, PROC, RAW, RESULTS, ROOT, weights_path
 
 OUT = PROC / "s2_2026"
 STRIDE = s2patch.PATCH - 30
@@ -148,7 +148,7 @@ def main() -> None:
     tiles = cut_tiles(districts, args.start, args.end, args.workers)
     tiles.to_csv(OUT / "tiles.csv", index=False)
 
-    model = YOLO(str(ROOT / "runs" / args.name / "weights" / "best.pt"))
+    model = YOLO(str(weights_path(args.name)))
     det = detect(model, tiles, args.conf, args.imgsz)
     kilns = merge_duplicates(det)
     print(f"{len(det)} raw detections, {len(kilns)} kilns after merging duplicates within {MERGE_M} m")

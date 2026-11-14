@@ -18,7 +18,7 @@ import numpy as np
 import pandas as pd
 from ultralytics import YOLO
 
-from config import CLASS_NAMES, IMG_DIR, PROC, RESULTS, ROOT
+from config import CLASS_NAMES, IMG_DIR, PROC, RESULTS, ROOT, weights_path
 
 YOLO_DIR = PROC / "yolo"
 
@@ -65,7 +65,7 @@ def main() -> None:
     ap.add_argument("--imgsz", type=int, default=256)
     args = ap.parse_args()
 
-    model = YOLO(str(ROOT / "runs" / args.name / "weights" / "best.pt"))
+    model = YOLO(str(weights_path(args.name)))
     df = pd.read_csv(PROC / "split.csv")
     df["y"] = (df["n_kilns"] > 0).astype(int)
 

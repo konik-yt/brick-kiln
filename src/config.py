@@ -8,6 +8,7 @@ PROC = ROOT / "data" / "processed"
 IMG_DIR = PROC / "patches" / "images"
 LBL_DIR = PROC / "patches" / "labels"
 RESULTS = ROOT / "results"
+MODELS = ROOT / "models"
 
 CLASS_NAMES = {0: "CFCBK", 1: "FCBK", 2: "Zigzag"}
 
@@ -32,3 +33,9 @@ def assign_split(province: str, district: str) -> str:
     if district in VAL_DISTRICTS:
         return "val"
     return "train"
+
+
+def weights_path(name: str) -> Path:
+    """Trained weights: runs/<name>/weights/best.pt after training here, else the copy in models/<name>.pt."""
+    local = ROOT / "runs" / name / "weights" / "best.pt"
+    return local if local.exists() else MODELS / f"{name}.pt"

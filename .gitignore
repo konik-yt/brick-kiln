@@ -1,7 +1,15 @@
 # Data and model outputs (large, downloaded or generated)
-data/
+# data/ is ignored except the KP schools file, which has no public download to rebuild it from
+data/*
+!data/raw/
+data/raw/*
+!data/raw/osm/
+data/raw/osm/*
+!data/raw/osm/schools_kp_osm.geojson
 runs/
 *.pt
+# the final trained detector is kept so the app and step 7 run from a fresh clone
+!models/*.pt
 *.tif
 *.tiff
 
